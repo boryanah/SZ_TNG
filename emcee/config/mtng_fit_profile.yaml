@@ -48,7 +48,9 @@ data_params:
     snaps_fn: /global/cscratch1/sd/boryanah/SZ_TNG/snaps_illustris_mtng.txt
     sim_name: MTNG
     fn_base: prof_sph_r200c_m200c_1e12Msun
-    dm_base: prof_dm_sph_r200c_m200c_1e12Msun
+    sz_base: SZ_sph_cyl_r200c_m200c_1e12Msun
+#    dm_base: prof_dm_dm_sph_r200c_m200c_1e12Msun
+    dm_base: prof_dm_fp_sph_r200c_m200c_1e12Msun
     snapshots: [179, 214, 237, 264]
     profs_type: ['n_e']#, 'P_e', 'rho']
     logmmin: 12
@@ -85,8 +87,9 @@ fit_params:
     
     # two-halo fudge factor (density)
     A_A2h: [16, 1., 0.5, 10., 0.1, 'n_e']
-    alpha_m_A2h: [17, 0., -3., 3., 0.1, 'n_e']
-    alpha_c_A2h: [18, 0., -3., 3., 0.1, 'n_e']
+    alpha_z_A2h: [17, 0., -3., 3., 0.1, 'n_e']
+    alpha_m_A2h: [18, 0., -3., 3., 0.1, 'n_e']
+    alpha_c_A2h: [19, 0., -3., 3., 0.1, 'n_e']
 
 other_params:
     # standard parameters (pressure)

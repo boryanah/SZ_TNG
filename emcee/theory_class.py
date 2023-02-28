@@ -113,7 +113,10 @@ class Theory(object):
         for snap in redshift_snap.keys():
             # initialize array
             n_e_snap[snap] = np.zeros(len(m200c)*len(x_200c)*len(sbinc))
-        
+
+        # initialize radial array
+        self.r200c = np.zeros_like(m200c)
+            
         # loop over concentration values
         for j in range(len(sbinc)):
             # I think we compute here?
@@ -128,8 +131,9 @@ class Theory(object):
                 # loop over each mass bin
                 for i in range(len(m200c)):
                     # radius
-                    r200c = M.get_r_delta_of_m_delta_at_z(200., m200c[i], z)
-                    r = x_200c*r200c
+                    self.r200c[i] = M.get_r_delta_of_m_delta_at_z(200., m200c[i], z)
+                    r = x_200c*self.r200c[i]
+                    # not sure about units of r200c (kpc/h? tuks)
 
                     # call one halo term
                     rho_1h_gas = rho_gas_b16(x_200c, m200c[i], z, **param_dict)
