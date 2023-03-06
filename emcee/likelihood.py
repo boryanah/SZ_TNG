@@ -10,19 +10,21 @@ class Data(object):
     """
     def __init__(self, data_params, cosmo_params, return_integral_quantities=False):
         """
-        Constructor of the power spectrum data
+        Constructor of the data
         """
         # read relevant parameters
         snapshots = data_params['snapshots']
         data_dir = Path(data_params['data_dir'])
         field_dir = Path(data_params['field_dir'])
         fn_base = data_params['fn_base']
+        sz_base = data_params['sz_base']
+        dm_base = data_params['dm_base']
         snaps_fn = data_params['snaps_fn']
-        profs_type = data_params['profs_type'] # for kSZ just take V com of halo
+        profs_type = data_params['profs_type']
         sim_name = data_params['sim_name'] # units kpc vs Mpc
         self.profs_type = profs_type
         self.cosmo_params = cosmo_params
-        assert len(profs_type) == 1, "More than one type of profile not implemented and doesn't make sense to fit simultaneously anyways"
+        #assert len(profs_type) == 1, "More than one type of profile not implemented and doesn't make sense to fit simultaneously anyways"
 
         # define mass bins
         logmmin = data_params['logmmin']
@@ -30,6 +32,7 @@ class Data(object):
         nbin = data_params['nbin_m']
         nbin_sec = data_params['nbin_sec']
         offset = 0.5 # TODO
+        c = 29979245800. # cm/s (mixing but introduced before) # TODO
         s_bins = np.linspace(-offset, offset, nbin_sec+1)
         m_bins = np.logspace(logmmin, logmmax, nbin+1)
         self.return_integral_quantities = return_integral_quantities
@@ -97,27 +100,25 @@ class Data(object):
                 Group_M_Crit200 = np.load(field_dir / f"Group_M_Crit200_fp_{snapshot:d}.npy")*1.e10 # Msun/h
                 Group_R_Crit200 = np.load(field_dir / f"Group_R_Crit200_fp_{snapshot:d}.npy") # Mpc/h
                 halo_conc = GroupConc[halo_inds]
-                halo_m200 = Group_M_Crit200[halo_inds]/self.cosmo_params['h'] # Msun
+                halo_m200 = Group_M_Crit200[halo_inds]/(self.cosmo_params['H0']/100.) # Msun
                 halo_r200 = Group_R_Crit200[halo_inds]
                 halo_shear = GroupShearAdapt[halo_inds]
                 halo_vel = GroupVel[halo_inds]
                 del Group_R_Crit200, Group_M_Crit200, GroupShearAdapt, GroupConc, GroupVel; gc.collect()
 
-
                 if self.return_integral_quantities:
                     data_sz = np.load(data_dir / f"{sz_base}_snap_{snapshot:d}.npz")
-                    sz_dict[snapshot]['Y_200c_sph'] = data['Y_200c_sph']
-                    sz_dict[snapshot]['Y_200c_cyl_xy'] = data['Y_200c_cyl_xy']
-                    sz_dict[snapshot]['b_200c_sph'] = data['b_200c_sph']
-                    sz_dict[snapshot]['b_200c_cyl_xy'] = data['b_200c_cyl_xy']
+                    sz_dict[snapshot]['Y_200c_sph'] = data_sz['Y_200c_sph']
+                    sz_dict[snapshot]['Y_200c_cyl_xy'] = data_sz['Y_200c_cyl_xy']
+                    sz_dict[snapshot]['b_200c_sph'] = data_sz['b_200c_sph']
+                    sz_dict[snapshot]['b_200c_cyl_xy'] = data_sz['b_200c_cyl_xy']
                     sz_dict[snapshot]['b_200c_sph'] = np.sqrt(sz_dict[snapshot]['b_200c_sph'][:, 0]**2+sz_dict[snapshot]['b_200c_sph'][:, 1]**2+sz_dict[snapshot]['b_200c_sph'][:, 2]**2)
-                    sz_dict[snapshot]['b_200c_cyl_xy'] /= halo_vel[:, 2]
-                    sz_dict[snapshot]['b_200c_sph'] /= np.sqrt(halo_vel[:, 0]**2+halo_vel[:, 1]**2+halo_vel[:, 2]**2)
+                    sz_dict[snapshot]['b_200c_cyl_xy'] *= (c/halo_vel[:, 2])
+                    sz_dict[snapshot]['b_200c_sph'] *= c/(np.sqrt(halo_vel[:, 0]**2+halo_vel[:, 1]**2+halo_vel[:, 2]**2))
                     
-                    sz_dict[snapshot]['tau_200c_sph'] = data['tau_200c_sph']
-                    sz_dict[snapshot]['tau_200c_cyl_xy'] = data['tau_200c_cyl_xy']
-                    assert np.sum(halo_inds - data['inds_halo']) == 0
-
+                    sz_dict[snapshot]['tau_200c_sph'] = data_sz['tau_200c_sph']
+                    sz_dict[snapshot]['tau_200c_cyl_xy'] = data_sz['tau_200c_cyl_xy']
+                    assert np.sum(halo_inds - data_sz['inds_halo']) == 0
                 
                 # select secondary halo property
                 halo_secondary = halo_conc # TODO
@@ -129,7 +130,7 @@ class Data(object):
                 # radial bins
                 r_bins = data['rbins'] # ratio to r200c
                 r_binc = (r_bins[1:]+r_bins[:-1])*.5
-                x_choice = r_binc > 0.01 # TODO
+                x_choice = (r_binc > 0.03) & (r_binc < 2.)# TODO
                 r_binc = r_binc[x_choice]
                 xbinc_snap[snapshot] = r_binc
 
@@ -138,7 +139,8 @@ class Data(object):
                 prof_icov[snapshot] = np.zeros(((len(m_bins)-1)*len(r_binc)*nbin_sec, (len(m_bins)-1)*len(r_binc)*nbin_sec))
                 prof_mask[snapshot] = np.ones((len(m_bins)-1)*len(r_binc)*nbin_sec, dtype=bool)
                 if self.return_integral_quantities:
-                    for key in sz_dict[snapshot].keys():
+                    keys = list(sz_dict[snapshot].keys())
+                    for key in keys:
                         sz_dict[snapshot][f"{key}_mean"] = np.zeros((len(m_bins)-1)*nbin_sec)
                         sz_dict[snapshot][f"{key}_std"] = np.zeros((len(m_bins)-1)*nbin_sec)
                 
@@ -151,7 +153,7 @@ class Data(object):
                     # secondary property in mass bin
                     m_sec = halo_secondary[m_choice]
                     rank_sec = (np.argsort(np.argsort(m_sec))+1)/len(m_sec)
-                    rank_sec -= offset # -0.5 to 0.5
+                    rank_sec -= offset # (-0.5, 0.5]
 
                     # loop over each secondary dependence bin
                     for j in range(nbin_sec):
@@ -172,12 +174,12 @@ class Data(object):
                         # record
                         prof_data[snapshot][(i*nbin_sec+j)*len(r_binc): (i*nbin_sec+j+1)*len(r_binc)] = prof_mean
                         prof_icov[snapshot][(i*nbin_sec+j)*len(r_binc): (i*nbin_sec+j+1)*len(r_binc), (i*nbin_sec+j)*len(r_binc): (i*nbin_sec+j+1)*len(r_binc)] = prof_invc
+                        
                         # save
                         if self.return_integral_quantities:
-                            for key in sz_dict[snapshot].keys():
+                            for key in keys:
                                 sz_dict[snapshot][f"{key}_mean"][(i*nbin_sec+j)] = np.mean(sz_dict[snapshot][key][m_choice][c_choice])
                                 sz_dict[snapshot][f"{key}_std"][(i*nbin_sec+j)] = np.std(sz_dict[snapshot][key][m_choice][c_choice])
-                                del sz_dict[snapshot][key]
 
             # within the larger dictionary
             profs_data[prof_type] = prof_data
@@ -191,8 +193,10 @@ class Data(object):
         self.xbinc_snap = xbinc_snap
         self.mbins_snap = mbins_snap
         self.redshift_snap = redshift_snap
-
-        # since it's shared between all (just being lazy)
+        if self.return_integral_quantities:
+            for key in keys:
+                del sz_dict[snapshot][key]
+            self.sz_dict = sz_dict
         self.xbinc = r_binc
         self.mbins = m_bins
         self.sbins = s_bins
@@ -211,7 +215,8 @@ class Data(object):
                 icov = self.profs_icov[prof_type][snap]
                 mask = self.profs_mask[prof_type][snap]
 
-                lnprob_snap = np.einsum('i,ij,j', delta[mask], icov[mask, mask], delta[mask])
+                #print(delta[mask].shape, icov[mask,mask].shape, delta[mask].shape)
+                lnprob_snap = np.einsum('i,ij,j', delta[mask], icov[mask[:, None]*mask[None, :]].reshape(np.sum(mask), np.sum(mask)), delta[mask])
                 #lnprob_snap = np.sum(delta[mask]**2*inv_err2[mask])
                 
                 lnprob += lnprob_snap

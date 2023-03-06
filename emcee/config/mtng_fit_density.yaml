@@ -4,14 +4,14 @@
 cosmo_params:
     omega_b: 0.022301 
     omega_cdm: 0.119444
-    h: 0.6774
+    H0: 67.74
     tau_reio: 0.0561
     ln10^{10}A_s: 3.047
     n_s: 0.9665
     k_pivot: 0.05
     N_ncdm: 0
     N_ur: 3.046
-    m_ncdm: 0.0
+    #m_ncdm: 0.0
 
 common_params:
     delta__for__galaxies: 200c
@@ -53,10 +53,10 @@ data_params:
     dm_base: prof_dm_fp_sph_r200c_m200c_1e12Msun
     snapshots: [179, 214, 237, 264]
     profs_type: ['n_e']#, 'P_e', 'rho']
-    logmmin: 12
-    logmmax: 15
-    nbin_m: 15
-    nbin_sec: 5
+    logmmin: 12 #12
+    logmmax: 15 #15
+    nbin_m: 15 #15
+    nbin_sec: 1 #5
     
 # Parameters to be fitted in MCMC
 # [mapping_index, mean, min, max, std, prof_type]
@@ -75,23 +75,34 @@ fit_params:
     #xc_B16: 0.5
 
     # power-law break (density)
-    alphap_m_rho0: [9, 0.29, -3., 3., 0.1, 'n_e']
-    alphap_m_alpha: [10, -0.03, -3., 3., 0.1, 'n_e']
-    alphap_m_beta: [11, 0.04, -3., 3., 0.1, 'n_e']
-    Mcut_break: [12, 13.8, 12.5, 14.5, 0.05, 'n_e']
+#    alphap_m_rho0: [9, 0.29, -3., 3., 0.1, 'n_e']
+#    alphap_m_alpha: [10, -0.03, -3., 3., 0.1, 'n_e']
+#    alphap_m_beta: [11, 0.04, -3., 3., 0.1, 'n_e']
+#    Mcut_break: [12, 13.8, 12.5, 14.5, 0.05, 'n_e']
 
     # concentration dependence (density)
-    alpha_c_rho0: [13, 0., -3., 3., 0.1, 'n_e']
-    alpha_c_alpha: [14, 0., -3., 3., 0.1, 'n_e']
-    alpha_c_beta: [15, 0., -3., 3., 0.1, 'n_e']
+#    alpha_c_rho0: [13, 0., -3., 3., 0.1, 'n_e']
+#    alpha_c_alpha: [14, 0., -3., 3., 0.1, 'n_e']
+#    alpha_c_beta: [15, 0., -3., 3., 0.1, 'n_e']
     
     # two-halo fudge factor (density)
-    A_A2h: [16, 1., 0.5, 10., 0.1, 'n_e']
-    alpha_z_A2h: [17, 0., -3., 3., 0.1, 'n_e']
-    alpha_m_A2h: [18, 0., -3., 3., 0.1, 'n_e']
-    alpha_c_A2h: [19, 0., -3., 3., 0.1, 'n_e']
+#    A_A2h: [13, 1., 0.5, 10., 0.1, 'n_e']
+#    alpha_z_A2h: [14, 0., -3., 3., 0.1, 'n_e']
+#    alpha_m_A2h: [15, 0., -3., 3., 0.1, 'n_e']
+#    alpha_c_A2h: [19, 0., -3., 3., 0.1, 'n_e']
 
 other_params:
+    A_P0: 0.1427908028961192
+    A_beta: 3.893965037998124
+    A_xc: 0.974200118750981
+    alpha_m_P0: 2.9997155059260243
+    alpha_m_xc: -0.3773077192804265
+    alpha_m_beta: 0.11671702983903263
+    alpha_z_P0: 1.1092085621496048
+    alpha_z_xc: 2.9277831969876758
+    alpha_z_beta: 2.271427521840853
+
+unused_params:
     # standard parameters (pressure)
     P0: [0, 18.1, 0., 50., 0.5, 'P_e']
     beta: [1, 4.35, 0., 10., 0.1, 'P_e']
@@ -124,7 +135,8 @@ other_params:
 # Configuration parameters for emcee
 ch_config_params:
     path2output: chains/mtng
-    chainsPrefix: mtng_n_e
+#    chainsPrefix: mtng_n_e
+    chainsPrefix: mtng_n_e_vanilla
     use_mpi: 0
     rerun: 0
     walkersRatio: 4

@@ -34,7 +34,7 @@ def main(path2config):
 
     # what are we plotting
     HOD_pars = par_names
-    filename = "triangle_test.png"
+    filename = f"figs/triangle_{ch_params['chainsPrefix']}.png"
     dir_chains = ch_params['path2output']
 
     # walkers ratio, number of params and burn in iterations

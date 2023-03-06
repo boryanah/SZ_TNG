@@ -123,6 +123,9 @@ def lnprob(p, params, param_mapping, param_profile, Da, Th):
         lnP = -np.inf
     return lnP
 
+def get_chi2(p, params, param_mapping, param_profile, Da, Th):
+    lnP = lnprob(p, params, param_mapping, param_profile, Da, Th)
+    return -2.*lnP
 
 def main(path2config, time_likelihood):
 
@@ -194,6 +197,16 @@ def main(path2config, time_likelihood):
         p_initial = old_chain[-nwalkers:,:]
         nsteps_use = max(nsteps-len(old_chain) // nwalkers, 0)
 
+    # TESTING!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    """
+    from scipy.optimize import minimize
+    p0 = params[:, 0]
+    res = minimize(get_chi2, p0, args=(params, param_mapping, param_profile, newData, newTheory), method='Nelder-Mead')
+    print("result", res)
+    print("initial", p0)
+    quit()
+    """
+    
     # initializing sampler
     chain_file = SampleFileUtil(prefix_chain, carry_on=ch_config_params['rerun'])
     sampler = emcee.EnsembleSampler(nwalkers, nparams, lnprob, args=(params, param_mapping, param_profile, newData, newTheory), pool=pool_use)
