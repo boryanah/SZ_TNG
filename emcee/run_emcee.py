@@ -108,7 +108,7 @@ def lnprob(p, params, param_mapping, param_profile, Da, Th):
                 param_dict[profile_type] = {}
                 param_dict[profile_type][key] = p[mapping_idx]
             #print(key, param_dict[profile_type][key])
-
+        
         # pass them to the mock dictionary
         profs_th = {}
         for prof_type in Da.profs_type:
@@ -119,6 +119,8 @@ def lnprob(p, params, param_mapping, param_profile, Da, Th):
             #profs_th = np.hstack((profs_th, prof_th))
             profs_th[prof_type] = prof_th
         lnP = Da.compute_likelihood(profs_th)
+        if np.isnan(lnP):
+            lnP = -np.inf
     else:
         lnP = -np.inf
     return lnP
@@ -197,11 +199,10 @@ def main(path2config, time_likelihood):
         p_initial = old_chain[-nwalkers:,:]
         nsteps_use = max(nsteps-len(old_chain) // nwalkers, 0)
 
-    # TESTING!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     """
     from scipy.optimize import minimize
     p0 = params[:, 0]
-    res = minimize(get_chi2, p0, args=(params, param_mapping, param_profile, newData, newTheory), method='Nelder-Mead')
+    res = minimize(get_chi2, p0, args=(params, param_mapping, param_profile, newData, newTheory), method='Nelder-Mead', options={'maxiter': 10000})
     print("result", res)
     print("initial", p0)
     quit()

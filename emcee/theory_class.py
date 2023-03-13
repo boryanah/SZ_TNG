@@ -20,7 +20,39 @@ class Theory(object):
             new_keys.append(" ".join(key.split("__")))
         for i, old_key in enumerate(old_keys):
             common_params[new_keys[i]] = common_params.pop(old_key)
-            
+        extra_params = {
+            'output': 'pressure_profile_2h,gas_density_profile_2h',
+            'pressure profile':'B12',
+            'gas profile':'B16',
+            'gas profile mode' : 'custom', # important to read values of parameters
+            'use_xout_in_density_profile_from_enclosed_mass' : 1,
+            'n_z_m_to_xout' : 30,
+            'n_mass_m_to_xout' : 30,
+            'M_min' : 1.0e10, 
+            'M_max' : 5e15,
+            'n_k_pressure_profile' :50, # this is l/ls # default 80
+            'n_m_pressure_profile' :30, # default: 100, decrease for faster
+            'n_z_pressure_profile' :30, # default: 100, decrease for faster
+            'k_min_gas_pressure_profile' : 1e-3, # l/ls hence no need for very extreme values...
+            'k_max_gas_pressure_profile' : 1e2, 
+            'k_min_gas_pressure_profile_2h' : 1e-3, # l/ls hence no need for very extreme values...
+            'k_max_gas_pressure_profile_2h' : 1e2, 
+            'n_k_density_profile' :50, # default 80
+            'n_m_density_profile' :30, # default: 100, decrease for faster
+            'n_z_density_profile' :30, # default: 100, decrease for faster
+            'k_min_gas_density_profile' : 1e-3,
+            'k_max_gas_density_profile' : 1e2, 
+            'k_min_samp_fftw' : 1e-3,
+            'k_max_samp_fftw' : 1e3,
+            'N_samp_fftw' : 1024,
+            'hm_consistency' : 0,
+            'use_fft_for_profiles_transform' : 1,
+            'x_min_gas_density_fftw' : 1e-5,
+            'x_max_gas_density_fftw' : 1e2,
+            'x_min_gas_pressure_fftw' : 1e-5,
+            'x_max_gas_pressure_fftw' : 1e2,
+        }
+        
         # set up constants
         self.X_H = 0.76
         self.m_amu = 1.66e-24 # g
@@ -34,40 +66,46 @@ class Theory(object):
         M = Class()
         M.set(common_params)
         M.set(cosmo_params)
-        M.set({
-            'output': 'mPk,pressure_profile_2h,pk_b_at_z_2h',
-            'pressure profile':'B12',
-            'gas profile':'B16',
-            'gas profile mode' : 'custom', # important to read values of parameters
-            'use_xout_in_density_profile_from_enclosed_mass' : 1,
-            'M_min' : 1.0e10, 
-            'M_max' : 5e15,
-            'n_k_pressure_profile' :80, # this is l/ls
-            'n_m_pressure_profile' :50, # default: 100, decrease for faster
-            'n_z_pressure_profile' :50, # default: 100, decrease for faster
-            'k_min_gas_pressure_profile' : 1e-3, # l/ls hence no need for very extreme values...
-            'k_max_gas_pressure_profile' : 1e2, 
-            'n_k_pressure_profile' :50, # this is kl
-            'k_min_gas_pressure_profile_2h' : 1e-3, # l/ls hence no need for very extreme values...
-            'k_max_gas_pressure_profile_2h' : 1e2, 
-            'n_k_density_profile' :50,
-            'n_m_density_profile' :20, # default: 100, decrease for faster
-            'n_z_density_profile' :50, # default: 100, decrease for faster
-            'k_min_gas_density_profile' : 1e-3,
-            'k_max_gas_density_profile' : 1e1, 
-            'k_min_samp_fftw' : 1e-3,
-            'k_max_samp_fftw' : 1e3,
-            'N_samp_fftw' : 200,
-            'hm_consistency' : 0,
-            'use_fft_for_profiles_transform' : 1,
-            'x_min_gas_density_fftw' : 1e-5,
-            'x_max_gas_density_fftw' : 1e2,
-            'x_min_gas_pressure_fftw' : 1e-5,
-            'x_max_gas_pressure_fftw' : 1e2,
-        })
+        M.set(extra_params)
         M.compute_class_szfast()
         self.M = M
 
+        print("# common")
+        for key in common_params.keys():
+            print(f"{key} = {common_params[key]}")
+        print("# cosmo")
+        for key in cosmo_params.keys():
+            print(f"{key} = {cosmo_params[key]}")
+        print("# extra")
+        for key in extra_params.keys():
+            print(f"{key} = {extra_params[key]}")
+
+        self.pressure_dict = {
+            'A_P0': 'P0_B12',
+            'A_xc': 'xc_B12',
+            'A_beta': 'beta_B12',
+            
+            'alpha_m_P0': 'alpha_m_P0_B12',
+            'alpha_m_xc': 'alpha_m_xc_B12',
+            'alpha_m_beta': 'alpha_m_beta_B12',
+
+            'alphap_m_P0': 'alphap_m_P0_B12',
+            'alphap_m_xc': 'alphap_m_xc_B12',
+            'alphap_m_beta': 'alphap_m_beta_B12',
+
+            'alpha_z_P0': 'alpha_z_P0_B12',
+            'alpha_z_xc': 'alpha_z_xc_B12',
+            'alpha_z_beta': 'alpha_z_beta_B12',
+
+            'alpha_c_P0': 'alpha_c_P0_B12',
+            'alpha_c_xc': 'alpha_c_xc_B12',
+            'alpha_c_beta': 'alpha_c_beta_B12',
+
+            'alpha': 'alpha_B12',
+            'gamma': 'gamma_B12',
+            'mcut': 'mcut_B12'
+        }
+        
         # store the radial profiles of the gas
         self.rho_gas_nfw = np.vectorize(M.get_gas_profile_at_x_M_z_nfw_200c)
         self.rho_gas_b16 = np.vectorize(M.get_gas_profile_at_x_M_z_b16_200c)
@@ -116,17 +154,14 @@ class Theory(object):
         rho_gas_b16 = self.rho_gas_b16
         rho2h_gas_b16 = self.rho2h_gas_b16
 
-        # TESTING!!!!!
-        """
         # let's get rid of parameters that are not part of the 1h call
-        A_2h = param_dict.pop('A_A2h') 
-        alpha_m_A2h = param_dict.pop('alpha_m_A2h')
-        alpha_z_A2h = param_dict.pop('alpha_z_A2h')
-        alpha_c_A2h = 0. #param_dict.pop('alpha_c_A2h') # TESTING!!
+        A_2h = param_dict.pop('A_A2h', 1.) 
+        alpha_m_A2h = param_dict.pop('alpha_m_A2h', 0.)
+        alpha_z_A2h = param_dict.pop('alpha_z_A2h', 0.)
+        alpha_c_A2h = param_dict.pop('alpha_c_A2h', 0.)
         
         # change name of parameter
-        param_dict['mcut'] = 10.**param_dict.pop('Mcut_break')
-        """
+        param_dict['mcut'] = 10.**param_dict.pop('Mcut_break', 14.)
 
         # store as dictionary
         n_e_snap = {}
@@ -139,14 +174,10 @@ class Theory(object):
             
         # loop over concentration values
         for j in range(len(sbinc)):
-            # I think we compute here?
-            # TESTING!!!!!
-            """
+            # compute
             param_dict['cp_B16'] = sbinc[j]
-            print(sbinc[j], param_dict)
-            M.compute_class_sz(param_dict)
-            param_dict['c_asked'] = param_dict.pop('cp_B16')
-            """
+            #M.compute_class_sz(param_dict)
+            param_dict['c_asked'] = param_dict.pop('cp_B16', 0.)
             for snap in redshift_snap.keys():
                 # redshift
                 z = redshift_snap[snap]
@@ -158,26 +189,22 @@ class Theory(object):
                     r = x_200c*self.r200c[i]
 
                     # call one halo term
-                    #rho_1h_gas = rho_gas_b16(x_200c, m200c[i], z, **param_dict)
-                    # (M.get_rho_crit_at_z(z) * M.get_f_b()) 
-
-                    # TESTING!!!!!!!!!!!
-                    rho_1h_gas = self.get_n_e_B12(x_200c, m200c[i]/M.h(), z, **param_dict)
-                    rho_1h_gas *= (M.get_rho_crit_at_z(z) * M.get_f_b()) 
+                    rho_1h_gas = rho_gas_b16(x_200c, m200c[i], z, **param_dict)
+                    # already multiplied by (M.get_rho_crit_at_z(z) * M.get_f_b()) 
+                    # equivalent
+                    #rho_1h_gas = self.get_n_e_B12(x_200c, m200c[i]/M.h(), z, **param_dict)
+                    #rho_1h_gas *= (M.get_rho_crit_at_z(z) * M.get_f_b()) 
                     
                     # call two halo term 
                     rho_2h_gas = rho2h_gas_b16(r, m200c[i], z)
 
                     # multiply by fictitious factor
-                    # TESTING!!!!!!!!!!!
-                    """
-                    rho_2h_gas *= A_2h * (1.+sbinc[j])**alpha_c_A2h * (m200c[i]/1.e14)**alpha_m_A2h * (1.+z)**alpha_z_A2h
-                    """
+                    rho_2h_gas *= A_2h * (1.+sbinc[j])**alpha_c_A2h * (m200c[i]/M.h()/param_dict['mcut'])**alpha_m_A2h * (1.+z)**alpha_z_A2h
                     
                     # combine one and two halo
                     rho_1p2h = rho_1h_gas + rho_2h_gas
                     rho_1p2h *= self.rho_crit_unit # g/cm^3
-                    rho_1p2h *= 0.5*(self.X_H + 1.)/self.m_amu # could do 200./X_H/self.m_amu # cm^-3
+                    rho_1p2h *= 0.5*(self.X_H + 1.)/self.m_amu # ask; could do 200./X_H/self.m_amu # cm^-3
                     
                     # add to array
                     n_e_snap[snap][(i*len(sbinc)+j)*len(x_200c): (i*len(sbinc)+j+1)*len(x_200c)] = rho_1p2h
@@ -193,16 +220,13 @@ class Theory(object):
         p_e2h_gas_b12 = self.p_e2h_gas_b12
 
         # let's get rid of parameters that are not part of the 1h call
-        # TESTING!!!!!!!!!!!
-        """
-        A_2h = param_dict.pop('A2h0')
-        alpha_m_A2h = param_dict.pop('alpha_m_A2h')
-        alpha_c_A2h = param_dict.pop('alpha_c_A2h')
-        alpha_z_A2h = param_dict.pop('alpha_z_A2h')
+        A_2h = param_dict.pop('A2h0', 1.)
+        alpha_m_A2h = param_dict.pop('alpha_m_A2h', 0.)
+        alpha_c_A2h = param_dict.pop('alpha_c_A2h', 0.)
+        alpha_z_A2h = param_dict.pop('alpha_z_A2h', 0.)
         
         # change name of parameter
-        param_dict['mcut_B12'] = 10.**param_dict.pop('Mcut_break')
-        """
+        param_dict['mcut'] = 10.**param_dict.pop('Mcut_break', 14.)
         
         # store as dictionary
         P_e_snap = {}
@@ -212,16 +236,17 @@ class Theory(object):
 
         # initialize radial array
         self.r200c = np.zeros_like(m200c)
-        
+
+        class_dict = {}
+        for key in param_dict.keys():
+            class_dict[self.pressure_dict[key]] = param_dict[key]
+            
         # loop over concentration values
         for j in range(len(sbinc)):
-            # I think we compute here?
-            # TESTING!!!!!!!!!!!
-            """
-            param_dict['cp_B12'] = sbinc[j]
-            M.compute_class_sz(param_dict)
-            param_dict['c_asked'] = param_dict.pop('cp_B12')
-            """
+            # compute
+            class_dict['cp_B12'] = sbinc[j]
+            #M.compute_class_sz(class_dict)
+            param_dict['c_asked'] = class_dict.pop('cp_B12', 0.)
             
             for snap in redshift_snap.keys():
                 # redshift
@@ -236,32 +261,29 @@ class Theory(object):
                     # normalization
                     pe200 = M.get_P_delta_at_m_and_z_b12(m200c[i], z)
                     
-                    # call one halo term
-                    #p_e_1h_gas = p_e_gas_b12(x_200c, m200c[i], z, **param_dict) # eV/cm^3
-
-                    # TESTING!!!!!!!!!!!
-                    p_e_1h_gas = self.get_P_e_B12(x_200c, m200c[i]/M.h(), z, **param_dict)
-                    p_e_1h_gas *= pe200
+                    # call one halo term # og
+                    p_e_1h_gas = p_e_gas_b12(x_200c, m200c[i], z, **param_dict) # eV/cm^3
+                    # equivalent
+                    #p_e_1h_gas = self.get_P_e_B12(x_200c, m200c[i]/M.h(), z, **param_dict)
+                    p_e_1h_gas *= pe200 # eV/cm^3 (important for both)
                     
                     # call two halo term
                     p_e_2h_gas = p_e2h_gas_b12(r, m200c[i], z) # eV/cm^3
-
+                                        
                     # multiply by fictitious factor
-                    # TESTING!!!!!!!!!!!
-                    """
-                    p_e_2h_gas *= A_2h * (1.+sbinc[j])**alpha_c_A2h * (m200c[i]/1.e14)**alpha_m_A2h * (1.+z)**alpha_z_A2h
-                    """
+                    p_e_2h_gas *= A_2h * (1.+sbinc[j])**alpha_c_A2h * (m200c[i]/M.h()/param_dict['mcut'])**alpha_m_A2h * (1.+z)**alpha_z_A2h
                     
                     # combine one and two halo 
                     p_e_1p2h = p_e_1h_gas + p_e_2h_gas
                     p_e_1p2h *= self.eV_to_erg # erg/cm^3
-                    p_e_1p2h *= ((2. + 2.*self.X_H) / (3. + 5.*self.X_H)) # could do without
+                    p_e_1p2h *= ((2. + 2.*self.X_H) / (3. + 5.*self.X_H)) # can remove
                     
                     # add to array
                     P_e_snap[snap][(i*len(sbinc)+j)*len(x_200c): (i*len(sbinc)+j+1)*len(x_200c)] = p_e_1p2h
         return P_e_snap
         
     def get_rho(self, z, param_dict):
+
         # object attributes
         M = self.M
         m200c = self.m200c*M.h() # Msun/h
@@ -274,11 +296,11 @@ class Theory(object):
             # initialize array
             rho_dm_snap[snap] = np.zeros(len(m200c)*len(x_200c))
 
-        # initialize radial array
-        self.r200c = np.zeros_like(m200c)
-
         # since not computing two-halo term
         M.compute_class_sz(param_dict)
+            
+        # initialize radial array
+        self.r200c = np.zeros_like(m200c)
         
         # loop over snapshots
         for snap in redshift_snap.keys():
@@ -287,22 +309,18 @@ class Theory(object):
 
             # loop over each mass bin
             for i in range(len(m200c)):
-                # radius
+                # radius (checked)
                 self.r200c[i] = M.get_r_delta_of_m_delta_at_z(200., m200c[i], z) # Mpc/h
                 r = x_200c*self.r200c[i]
-                c200c = M.get_c200c_at_m_and_z_D08(m200c, z)
-
-                # call one halo term
-                rs_200c = r200c/c200c
+                c200c = M.get_c200c_at_m_and_z_D08(m200c[i] , z)
+                rs_200c = self.r200c[i]/c200c 
                 xs_200c =  r/rs_200c
-                rho_norm_nfw = rho_gas_nfw(xs_200c, m200c, z)
-        
+                
                 # call one halo term
-                rho_1h_nfw = rho_gas_nfw(xs_200c, m200c[i], z, *param_dict)
-
-                # convert into dark matter density
-                rho_1h_nfw /= M.get_f_b() #(M.get_rho_crit_at_z(z)*M.get_f_b())
-                    
+                rho_1h_nfw = rho_gas_nfw(xs_200c, m200c[i], z)
+                # already multiplied by (M.get_rho_crit_at_z(z)*M.get_f_b())
+                rho_1h_nfw *= self.rho_crit_unit # g/cm^3
+                
                 # add to array
                 rho_dm_snap[snap][i*len(x_200c): (i+1)*len(x_200c)] = rho_1h_nfw
- 
+        return rho_dm_snap

@@ -93,7 +93,7 @@ def main(path2config, time_likelihood):
     snapshots = data_params['snapshots']
 
     # here we are just going to decide on which profiles to load
-    data_params['profs_type'] = ['n_e', 'P_e'] # can comment out
+    data_params['profs_type'] = ['P_e'] # TESTING!!!!!!!!!!!! #['n_e', 'P_e'] # can comment out
     profs_type_plot = data_params['profs_type']
     
     # read data parameters
@@ -106,28 +106,40 @@ def main(path2config, time_likelihood):
     dir_chains = ch_config_params['path2output']
     marg_outfile = os.path.join(dir_chains, (ch_config_params['chainsPrefix']+".txt"))
     lnprob_outfile = os.path.join(dir_chains, (ch_config_params['chainsPrefix']+"prob.txt"))
-    
-    # read in bestfit (names of parameters from fit_params)
-    lnprob = np.loadtxt(lnprob_outfile)
-    marg = np.loadtxt(marg_outfile)
-    index_max = np.argmax(lnprob)
-    p = marg[index_max]
-    print("max", lnprob[index_max])
 
-    # TESTING!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    # P_e
-    #p = np.array([ 4.98613665,  2.2070132 ,  0.99140828, -0.84607143, -0.0216052,
-    #               -0.05548292, -1.24974987,  2.17889123,  2.97940622])
-    #p = np.array([5.19566202e+00, 9.85703283e+00, 9.99999865e-01, 2.76358106e-02,
-    #              1.30528803e-02, 9.80211013e-04, 2.82713967e-01, 1.35135597e+00,
-    #              3.14030802e-02])
-    #p = np.array([8.35420483, 6.56279696, 1.45975919, 0.21091826, 0.01707898,
-    #              0.0797731 , 0.31435676, 2.10866315, 2.27023049])
-    # n_e
-    #p = np.array([ 1.85410576e+03,  1.52184816e+00,  3.36641396e+00,  2.78641403e-01,
-    #               -3.01246172e-02,  4.90239365e-02, -8.66447087e-01,  1.35785610e-01, -9.22377242e-03])
-    #p = np.array([ 1.31630205e+03,  1.38077037e+00,  2.35763762e+00,  5.57495651e-01,
-    #               -7.64588711e-02,  2.35171189e-01,  1.35922570e-01,  8.46757801e-02, 3.28053481e-02])
+    input_pmax = False
+    if input_pmax:
+        # TESTING!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        # P_e
+        #p = np.array([ 4.98613665,  2.2070132 ,  0.99140828, -0.84607143, -0.0216052,
+        #               -0.05548292, -1.24974987,  2.17889123,  2.97940622])
+        #p = np.array([5.19566202e+00, 9.85703283e+00, 9.99999865e-01, 2.76358106e-02,
+        #              1.30528803e-02, 9.80211013e-04, 2.82713967e-01, 1.35135597e+00,
+        #              3.14030802e-02])
+        #p = np.array([8.35420483, 6.56279696, 1.45975919, 0.21091826, 0.01707898,
+        #              0.0797731 , 0.31435676, 2.10866315, 2.27023049])
+        # chi2 = 57.3 w/o comp (got 56.1 w comp)
+        #p = np.array([ 6.00416473e+00,  9.24874836e+00,  2.40617958e+00,  4.43622591e-01,
+        #               -4.62934559e-03,  1.61620694e-01,  3.97548021e-01,  1.30654841e+00, 1.53921807e+00])
+        p = np.array([ 3.27801935,  1.76861628,  0.58899468,  0.23005875,  0.02647415,
+                       0.13972084,  0.15246853,  0.07331921,  0.23032649,  0.0695029 ,
+                       12.5166127 ,  1.48445195, -0.54531285])
+        # chi2 = 62.1 w/ comp (got 57.6 w/o comp)
+        #p = np.array([12.33722686,  5.68785709,  1.07629835,  0.57828183,  0.02332784,
+        #              0.21744102,  0.06446547,  0.14741691,  0.19644855])
+        # n_e
+        #p = np.array([ 1.85410576e+03,  1.52184816e+00,  3.36641396e+00,  2.78641403e-01,
+        #               -3.01246172e-02,  4.90239365e-02, -8.66447087e-01,  1.35785610e-01, -9.22377242e-03])
+        #p = np.array([ 1.31630205e+03,  1.38077037e+00,  2.35763762e+00,  5.57495651e-01,
+        #               -7.64588711e-02,  2.35171189e-01,  1.35922570e-01,  8.46757801e-02, 3.28053481e-02])
+    else:
+        # read in bestfit (names of parameters from fit_params)
+        lnprob = np.loadtxt(lnprob_outfile)
+        marg = np.loadtxt(marg_outfile)
+        index_max = np.argmax(lnprob)
+        p = marg[index_max]
+        print("max", lnprob[index_max])
+
     
     # parameters to fit
     nparams = len(fit_params.keys())
@@ -232,7 +244,8 @@ def main(path2config, time_likelihood):
                 
                 plt.savefig(f"figs/prof_{prof_type}_{chainsPrefix}_snap{snap:d}.png")
             print("chi2 sum, dof sum", chi2_sum, dof_sum)
-            
+    quit() # TESTING
+    
     if Da.return_integral_quantities and len(profs_type_plot) > 1:
         # loop over each snapshot
         for i in range(len(snapshots)):

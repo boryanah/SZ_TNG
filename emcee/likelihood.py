@@ -22,6 +22,10 @@ class Data(object):
         snaps_fn = data_params['snaps_fn']
         profs_type = data_params['profs_type']
         sim_name = data_params['sim_name'] # units kpc vs Mpc
+        secondary_type = data_params.get('secondary_type', 'conc')
+        r_min = data_params.get('r_min', 0.0)
+        r_max = data_params.get('r_max', 100.)
+        print(r_min, r_max)
         self.profs_type = profs_type
         self.cosmo_params = cosmo_params
         #assert len(profs_type) == 1, "More than one type of profile not implemented and doesn't make sense to fit simultaneously anyways"
@@ -69,7 +73,7 @@ class Data(object):
                 n_e = data['n_e']/data['V_d']
                 T_e = data['T_e']/data['N_v']
                 P_e = data['P_e']/data['V_d']
-                if "rho" == prof_type:
+                if "rho" == prof_type: # tuks could have rho_dm_dm and rho_dm_fp
                     data = np.load(data_dir / f"{dm_base}_snap_{snapshot:d}.npz")
                     rho = data['rho_dm']/data['V_d']
                     rho[data['V_d'] == 0.] = 0.
@@ -121,7 +125,8 @@ class Data(object):
                     assert np.sum(halo_inds - data_sz['inds_halo']) == 0
                 
                 # select secondary halo property
-                halo_secondary = halo_conc # TODO
+                if secondary_type == 'conc':
+                    halo_secondary = halo_conc
 
                 # mass bins
                 mbins_snap[snapshot] = m_bins
@@ -130,7 +135,8 @@ class Data(object):
                 # radial bins
                 r_bins = data['rbins'] # ratio to r200c
                 r_binc = (r_bins[1:]+r_bins[:-1])*.5
-                x_choice = (r_binc > 0.03) & (r_binc < 2.)# TODO
+                r_200c = np.zeros_like(r_binc)
+                x_choice = (r_binc > r_min) & (r_binc < r_max)
                 r_binc = r_binc[x_choice]
                 xbinc_snap[snapshot] = r_binc
 
@@ -152,6 +158,7 @@ class Data(object):
                     
                     # secondary property in mass bin
                     m_sec = halo_secondary[m_choice]
+                    r_200c[i] = np.mean(halo_r200[m_choice])
                     rank_sec = (np.argsort(np.argsort(m_sec))+1)/len(m_sec)
                     rank_sec -= offset # (-0.5, 0.5]
 
@@ -198,6 +205,7 @@ class Data(object):
                 del sz_dict[snapshot][key]
             self.sz_dict = sz_dict
         self.xbinc = r_binc
+        self.rbinc = r_200c
         self.mbins = m_bins
         self.sbins = s_bins
         
