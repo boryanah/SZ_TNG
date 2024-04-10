@@ -105,23 +105,87 @@ class Data(object):
                 Group_R_Crit200 = np.load(field_dir / f"Group_R_Crit200_fp_{snapshot:d}.npy") # Mpc/h
                 halo_conc = GroupConc[halo_inds]
                 halo_m200 = Group_M_Crit200[halo_inds]/(self.cosmo_params['H0']/100.) # Msun
-                halo_r200 = Group_R_Crit200[halo_inds]
+                halo_r200 = Group_R_Crit200[halo_inds]*a/(self.cosmo_params['H0']/100.) # Mpc
                 halo_shear = GroupShearAdapt[halo_inds]
                 halo_vel = GroupVel[halo_inds]
                 del Group_R_Crit200, Group_M_Crit200, GroupShearAdapt, GroupConc, GroupVel; gc.collect()
 
                 if self.return_integral_quantities:
-                    data_sz = np.load(data_dir / f"{sz_base}_snap_{snapshot:d}.npz")
-                    sz_dict[snapshot]['Y_200c_sph'] = data_sz['Y_200c_sph']
-                    sz_dict[snapshot]['Y_200c_cyl_xy'] = data_sz['Y_200c_cyl_xy']
-                    sz_dict[snapshot]['b_200c_sph'] = data_sz['b_200c_sph']
-                    sz_dict[snapshot]['b_200c_cyl_xy'] = data_sz['b_200c_cyl_xy']
-                    sz_dict[snapshot]['b_200c_sph'] = np.sqrt(sz_dict[snapshot]['b_200c_sph'][:, 0]**2+sz_dict[snapshot]['b_200c_sph'][:, 1]**2+sz_dict[snapshot]['b_200c_sph'][:, 2]**2)
-                    sz_dict[snapshot]['b_200c_cyl_xy'] *= (c/halo_vel[:, 2])
-                    sz_dict[snapshot]['b_200c_sph'] *= c/(np.sqrt(halo_vel[:, 0]**2+halo_vel[:, 1]**2+halo_vel[:, 2]**2))
+                    # compute the root mean square
+                    v_rms = np.sqrt(np.mean(halo_vel[:, 0]**2+halo_vel[:, 1]**2+halo_vel[:, 2]**2))/np.sqrt(3.)
+                    print("vrms", v_rms)
                     
-                    sz_dict[snapshot]['tau_200c_sph'] = data_sz['tau_200c_sph']
-                    sz_dict[snapshot]['tau_200c_cyl_xy'] = data_sz['tau_200c_cyl_xy']
+                    data_sz = np.load(data_dir / f"{sz_base}_snap_{snapshot:d}.npz")
+                    sz_dict[snapshot][f'Y_200c_sph'] = data_sz[f'Y_200c_sph']
+                    sz_dict[snapshot][f'b_200c_sph'] = data_sz[f'b_200c_sph']
+                    sz_dict[snapshot][f'b_200c_sph'] = np.sqrt(sz_dict[snapshot][f'b_200c_sph'][:, 0]**2+sz_dict[snapshot][f'b_200c_sph'][:, 1]**2+sz_dict[snapshot][f'b_200c_sph'][:, 2]**2)
+                    #sz_dict[snapshot][f'b_200c_sph'] *= c/(np.sqrt(halo_vel[:, 0]**2+halo_vel[:, 1]**2+halo_vel[:, 2]**2)) # TESTING
+                    sz_dict[snapshot][f'b_200c_sph'] *= c * (np.sqrt(halo_vel[:, 0]**2+halo_vel[:, 1]**2+halo_vel[:, 2]**2)/(3.*v_rms**2)) # og
+                    sz_dict[snapshot][f'tau_200c_sph'] = data_sz[f'tau_200c_sph']
+
+                    # TESTING!!!!! new stuff
+                    #data_cyl = np.load(f"data/sz_r200c_all_snap_{snapshot:d}.npz")
+                    #data_rnd = np.load(f"data/sz_randoms_all_snap_{snapshot:d}.npz")
+                    
+                    # USUAL WAY
+                    orientations = ['xy']
+                    for orientation in orientations:
+                        # USUAL WAY!
+                        sz_dict[snapshot][f'Y_200c_cyl_{orientation}'] = data_sz[f'Y_200c_cyl_{orientation}']
+                        sz_dict[snapshot][f'b_200c_cyl_{orientation}'] = data_sz[f'b_200c_cyl_{orientation}']
+                        if orientation == "xy":
+                            #sz_dict[snapshot][f'b_200c_cyl_{orientation}'] *= (c/halo_vel[:, 2]) # TESTING
+                            sz_dict[snapshot][f'b_200c_cyl_{orientation}'] *= c * (halo_vel[:, 2]/v_rms**2) # og
+                        elif orientation == "yz":
+                            #sz_dict[snapshot][f'b_200c_cyl_{orientation}'] *= (c/halo_vel[:, 0]) # TESTING
+                            sz_dict[snapshot][f'b_200c_cyl_{orientation}'] *= c * (halo_vel[:, 0]/v_rms**2) # og
+                        elif orientation == "zx":
+                            #sz_dict[snapshot][f'b_200c_cyl_{orientation}'] *= (c/halo_vel[:, 1]) # TESTING
+                            sz_dict[snapshot][f'b_200c_cyl_{orientation}'] *= c * (halo_vel[:, 1]/v_rms**2) # og
+                            
+                        sz_dict[snapshot][f'tau_200c_cyl_{orientation}'] = data_sz[f'tau_200c_cyl_{orientation}']
+
+                        # TESTING!!!!! new stuff
+                        """
+                        sz_dict[snapshot][f'Y_200c_cyl_{orientation}'] = data_cyl[f'Y_{orientation}_r200c_circ']
+                        sz_dict[snapshot][f'b_200c_cyl_{orientation}'] = data_cyl[f'b_{orientation}_r200c_circ']
+                        sz_dict[snapshot][f'b_200c_cyl_{orientation}'] *= (c/halo_vel[:, 2])
+                        sz_dict[snapshot][f'tau_200c_cyl_{orientation}'] = data_cyl[f'tau_{orientation}_r200c_circ']
+                        """
+                        
+                        # USUAL WAY randoms
+                        data_rnd = np.load(f"data/sz_randoms_snap_{snapshot:d}.npz") # og
+                        #data_rnd = np.load(f"../data/sz_randoms_snap_{snapshot:d}.npz") # presentation directory
+                        # TESTING!!! new stuff is just commenting out above line
+                        Y_xy = data_rnd[f'Y_{orientation}_randoms_diff']
+                        tau_xy = data_rnd[f'tau_{orientation}_randoms_diff']
+                        b_xy = data_rnd[f'b_{orientation}_randoms_diff']
+                        if orientation == "xy":
+                            #b_xy *= (c/halo_vel[:, 2]) # TESTING
+                            b_xy *= c * (halo_vel[:, 2]/v_rms**2) # og
+                        elif orientation == "yz":
+                            #b_xy *= (c/halo_vel[:, 0]) # TESTING
+                            b_xy *= c * (halo_vel[:, 0]/v_rms**2) # og
+                        elif orientation == "zx":
+                            #b_xy *= (c/halo_vel[:, 1]) # TESTING
+                            b_xy *= c * (halo_vel[:, 1]/v_rms**2) # og
+                        r_bins = data_rnd[f'r_bins_hcMpc']*a/(self.cosmo_params[f'H0']/100.) # Mpc
+                        theta = data_rnd[f'theta_arcmins']
+                        Y_xy /= np.pi*(r_bins[:, -1]**2 - r_bins[:, -2]**2)
+                        Y_xy = Y_xy*(np.pi*halo_r200**2)
+                        tau_xy /= np.pi*(r_bins[:, -1]**2 - r_bins[:, -2]**2)
+                        tau_xy = tau_xy*(np.pi*halo_r200**2)
+                        b_xy /= np.pi*(r_bins[:, -1]**2 - r_bins[:, -2]**2)
+                        b_xy = b_xy*(np.pi*halo_r200**2)
+                        if snapshot == 264: # notice we are pretending it's at z = 0.5, so theta_arcmins are a bit off
+                            tau_xy *= (1+0.5)**2
+                            Y_xy *= (1+0.5)**2
+                            b_xy *= (1+0.5)**2
+                        #sz_dict[snapshot][f'tau_200c_cyl_{orientation}'] -= tau_xy
+                        sz_dict[snapshot][f'tau_200c_cyl_{orientation}_rand'] = tau_xy
+                        sz_dict[snapshot][f'Y_200c_cyl_{orientation}_rand'] = Y_xy
+                        sz_dict[snapshot][f'b_200c_cyl_{orientation}_rand'] = b_xy
+
                     assert np.sum(halo_inds - data_sz['inds_halo']) == 0
                 
                 # select secondary halo property
@@ -149,6 +213,11 @@ class Data(object):
                     for key in keys:
                         sz_dict[snapshot][f"{key}_mean"] = np.zeros((len(m_bins)-1)*nbin_sec)
                         sz_dict[snapshot][f"{key}_std"] = np.zeros((len(m_bins)-1)*nbin_sec)
+                        try:
+                            sz_dict[snapshot][f"{key}_mean_rand"] = np.zeros((len(m_bins)-1)*nbin_sec)
+                            sz_dict[snapshot][f"{key}_std_rand"] = np.zeros((len(m_bins)-1)*nbin_sec)
+                        except:
+                            pass
                 
                 # loop over each mass bin
                 for i in range(len(m_bins)-1):
@@ -185,9 +254,14 @@ class Data(object):
                         # save
                         if self.return_integral_quantities:
                             for key in keys:
-                                sz_dict[snapshot][f"{key}_mean"][(i*nbin_sec+j)] = np.mean(sz_dict[snapshot][key][m_choice][c_choice])
-                                sz_dict[snapshot][f"{key}_std"][(i*nbin_sec+j)] = np.std(sz_dict[snapshot][key][m_choice][c_choice])
-
+                                # TESTING
+                                sz_dict[snapshot][f"{key}_mean"][(i*nbin_sec+j)] = np.nanmean(sz_dict[snapshot][key][m_choice][c_choice])
+                                sz_dict[snapshot][f"{key}_std"][(i*nbin_sec+j)] = np.nanstd(sz_dict[snapshot][key][m_choice][c_choice])
+                                try:
+                                    sz_dict[snapshot][f"{key}_mean_rand"][(i*nbin_sec+j)] = np.nanmean(sz_dict[snapshot][f"{key}_rand"][m_choice][c_choice])
+                                    sz_dict[snapshot][f"{key}_std_rand"][(i*nbin_sec+j)] = np.nanstd(sz_dict[snapshot][f"{key}_rand"][m_choice][c_choice])
+                                except:
+                                    pass
             # within the larger dictionary
             profs_data[prof_type] = prof_data
             profs_icov[prof_type] = prof_icov

@@ -73,24 +73,38 @@ def extractStamp(cmbMap, ra, dec, rApMaxArcmin, resCutoutArcmin, projCutout, pat
         return opos, stampMap, stampMask
     return opos, stampMap
 
-def calc_T_AP(imap, rad_arcmin, test=False, mask=None, divmap=None):
+def calc_T_AP(imap, rad_arcmin, test=False, mask=None, divmap=None, measurement="mean"):
     modrmap = imap.modrmap()
     radius = rad_arcmin*utils.arcmin
     inner = modrmap < radius
     outer = (modrmap >= radius) & (modrmap < np.sqrt(2.)*radius)
+    #res_arcmin = 0.05
+    #print("pixelized, true = ", np.sum(inner), np.pi*(rad_arcmin/res_arcmin)**2)
+    #ratio = np.sum(inner)/(np.pi*(rad_arcmin/res_arcmin)**2)
+    
     if mask is None:
-        flux_inner = imap[inner].mean()
-        flux_outer = imap[outer].mean()
+        print("no")
+        if measurement == "mean":
+            flux_inner = imap[inner].mean()
+            flux_outer = imap[outer].mean()
+        elif measurement == "integrated":
+            flux_inner = imap[inner].sum()
+            flux_outer = imap[outer].sum()
         flux_inner_std = imap[inner].std()
         flux_outer_std = imap[outer].std()
         if divmap is not None:
             divs = divmap[inner].mean()
     else:
         if (np.sum(mask[inner]) == 0.) or (np.sum(mask[outer]) == 0.):
-            return 0.
+            return 0., 0., 0., 0.
         else:
-            flux_inner = np.sum(imap[inner]*mask[inner])/np.sum(mask[inner])
-            flux_outer = np.sum(imap[outer]*mask[outer])/np.sum(mask[outer])
+            if measurement == "mean":
+                flux_inner = np.sum(imap[inner]*mask[inner])/np.sum(mask[inner])
+                flux_outer = np.sum(imap[outer]*mask[outer])/np.sum(mask[outer])
+            elif measurement == "integrated":
+                # multiplication by this factor accounts for no boundary conditions in simulation (could implement)
+                flux_inner = np.sum(imap[inner]*mask[inner])*(np.sum(inner)/np.sum(mask[inner]))
+                flux_outer = np.sum(imap[outer]*mask[outer])*(np.sum(outer)/np.sum(mask[outer]))
             flux_inner_std = np.sqrt(np.sum((imap[inner]*mask[inner]-flux_inner)**2)/np.sum(mask[inner]))
             flux_outer_std = np.sqrt(np.sum((imap[outer]*mask[outer]-flux_outer)**2)/np.sum(mask[outer]))
             if divmap is not None:
@@ -98,4 +112,54 @@ def calc_T_AP(imap, rad_arcmin, test=False, mask=None, divmap=None):
     
     if divmap is not None:
         flux_inner, flux_outer, flux_inner_std, flux_outer_std, divs
-    return flux_inner, flux_outer, flux_inner_std, flux_outer_std
+    return flux_inner, flux_outer, flux_inner_std, flux_outer_std 
+
+
+def calc_T_AP_fast(imap, rad_arcmin, inner, mask, measurement="mean"):
+    
+    if (np.sum(mask[inner]) == 0.):
+        print("no")
+        return 0., 0., 0., 0.
+    else:
+        if measurement == "mean":
+            flux_inner = np.sum(imap[inner]*mask[inner])/np.sum(mask[inner])
+        elif measurement == "integrated":
+            # multiplication by this factor accounts for no boundary conditions in simulation (could implement)
+            flux_inner = np.sum(imap[inner]*mask[inner])*(np.sum(inner)/np.sum(mask[inner]))
+
+    return flux_inner
+
+def extractStamps(cmbMap1, cmbMap2, cmbMap3, ra, dec, rApMaxArcmin, resCutoutArcmin, projCutout, pathTestFig='figs/', test=False, cmbMask=None, order=1):
+    """Extracts a small CEA or CAR map around the given position, with the given angular size and resolution.
+    ra, dec in degrees.
+    Does it for the map, the mask and the hit count.
+    order > 1 is too slow
+    """
+    # enmap 
+    stampMap1 = cutoutGeometry(rApMaxArcmin=rApMaxArcmin, resCutoutArcmin=resCutoutArcmin, projCutout=projCutout)
+    stampMap2 = stampMap1.copy()
+    stampMap3 = stampMap1.copy()
+    stampMask = stampMap1.copy()
+    
+    # coordinates of the square map (between -1 and 1 deg); output map position [{dec,ra},ny,nx]
+    opos = stampMap1.posmap()
+
+    # coordinate of the center of the square map we want to extract
+    sourcecoord = np.array([ra, dec])*utils.degree  # convert from degrees to radians
+
+    # corresponding true coordinates on the big healpy map
+    ipos = rotfuncs.recenter(opos[::-1], [0, 0, sourcecoord[0], sourcecoord[1]])[::-1]
+
+    # Here, I use bilinear interpolation
+    stampMap1[:, :] = cmbMap1.at(ipos, prefilter=True, mask_nan=False, order=order)
+    stampMap2[:, :] = cmbMap2.at(ipos, prefilter=True, mask_nan=False, order=order)
+    stampMap3[:, :] = cmbMap3.at(ipos, prefilter=True, mask_nan=False, order=order)
+    if cmbMask is not None:
+        stampMask[:, :] = cmbMask.at(ipos, prefilter=True, mask_nan=False, order=order)
+    
+        # re-threshold the mask map, to keep 0 and 1 only
+        stampMask[:, :] = 1.*(stampMask[:, :]>0.5)
+    
+        return opos, stampMap1, stampMap2, stampMap3, stampMask
+    
+    return opos, stampMap1, stampMap2, stampMap3
