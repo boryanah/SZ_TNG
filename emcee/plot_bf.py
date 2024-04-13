@@ -20,6 +20,19 @@ import matplotlib.pyplot as plt
 
 DEFAULTS = {}
 DEFAULTS['path2config'] = 'config/fit_profile.yaml'
+DEFAULTS['path2config_fixed'] = None
+
+"""
+python plot_bf.py --path2config config/mtng_fit_vanilla_density.yaml
+python plot_bf.py --path2config config/mtng_fit_conc_density.yaml
+python plot_bf.py --path2config config/mtng_fit_conc_power_density.yaml
+python plot_bf.py --path2config config/mtng_fit_power_density.yaml
+
+python plot_bf.py --path2config config/mtng_fit_vanilla_pressure.yaml
+python plot_bf.py --path2config config/mtng_fit_conc_pressure.yaml
+python plot_bf.py --path2config config/mtng_fit_conc_power_pressure.yaml
+python plot_bf.py --path2config config/mtng_fit_power_pressure.yaml
+"""
 
 # constants cgs
 gamma = 5/3.
@@ -60,96 +73,74 @@ def get_norm_prof_type(sz_type):
     if sz_type[0] == "Y":
         # P_e in units of erg/cm^3; when multiplied by sigmaT/mec2, we get 1/cm
         # when multiplied by rbinc^3/1000**2 gives Mpc^2 kpc/cm so we multiply by kpc_to_cm
-        norm = sigma_T/(m_e*c**2)*kpc_to_cm/(1000.**3) # Mpc^2 (final)
+        norm = sigma_T/(m_e*c**2)*kpc_to_cm/(1000.**2) # Mpc^2 (final)
         prof_type = 'P_e'
     elif sz_type[:3] == "tau":
         # n_e in units of erg/cm^3; when multiplied by sigmaT/mec2, we get 1/cm
         # when multiplied by rbinc^3/1000**2 gives Mpc^2 kpc/cm so we multiply by kpc_to_cm
-        norm = sigma_T*kpc_to_cm/(1000.**3) # Mpc^2 (final)
+        norm = sigma_T*kpc_to_cm/(1000.**2) # Mpc^2 (final)
         prof_type = 'n_e'
     elif sz_type[0] == "b":
         # n_e in units of erg/cm^3; when multiplied by sigmaT/mec2, we get 1/cm
         # when multiplied by rbinc^3/1000**2 gives Mpc^2 kpc/cm so we multiply by kpc_to_cm
-        norm = sigma_T*kpc_to_cm/(1000.**3) # Mpc^2 (final)
+        norm = sigma_T*kpc_to_cm/(1000.**2) # Mpc^2 (final)
         prof_type = 'n_e'
     return norm, prof_type
 
-
-def main(path2config, time_likelihood):
-
-    # load the yaml parameters 
+def load_1p2h(path2config, r_min, r_max, nbin_sec, secondary_type, load_fixed_mini=False):
+    # load the yaml parameters
     config = yaml.load(open(path2config))
     cosmo_params = config['cosmo_params']
     common_params = config['common_params']
     data_params = config['data_params']
     ch_config_params = config['ch_config_params']
     fit_params = config['fit_params']
-    other_params = config['other_params']
 
-    # chain name
-    chainsPrefix = ch_config_params['chainsPrefix']
-    
-    # snapshots
-    snapshots = data_params['snapshots']
+    # change so as to match (tuks think about secondary parameter)
+    data_params['r_min'] = r_min
+    data_params['r_max'] = r_max
+    data_params['nbin_sec'] = nbin_sec
+    data_params['secondary_type'] = secondary_type
 
-    # here we are just going to decide on which profiles to load
-    data_params['profs_type'] = ['P_e'] # TESTING!!!!!!!!!!!! #['n_e', 'P_e'] # can comment out
-    profs_type_plot = data_params['profs_type']
-    
+    # where are the chains saved
+    dir_chains = ch_config_params['path2output']
+
     # read data parameters
-    Da = Data(data_params, cosmo_params, return_integral_quantities=True)
+    Da = Data(data_params, cosmo_params)
     
     # create a new abacushod object and load the subsamples
-    Th = Theory(cosmo_params, common_params, Da.xbinc, Da.mbins, Da.sbins)
+    Th = Theory(cosmo_params, common_params, Da.xbinc, Da.mbins, Da.sbins, fixed_profile=True)
 
-    # walkers ratio, number of params and burn in iterations
-    dir_chains = ch_config_params['path2output']
-    marg_outfile = os.path.join(dir_chains, (ch_config_params['chainsPrefix']+".txt"))
-    lnprob_outfile = os.path.join(dir_chains, (ch_config_params['chainsPrefix']+"prob.txt"))
-
-    input_pmax = False
-    if input_pmax:
-        # TESTING!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        # P_e
-        #p = np.array([ 4.98613665,  2.2070132 ,  0.99140828, -0.84607143, -0.0216052,
-        #               -0.05548292, -1.24974987,  2.17889123,  2.97940622])
-        #p = np.array([5.19566202e+00, 9.85703283e+00, 9.99999865e-01, 2.76358106e-02,
-        #              1.30528803e-02, 9.80211013e-04, 2.82713967e-01, 1.35135597e+00,
-        #              3.14030802e-02])
-        #p = np.array([8.35420483, 6.56279696, 1.45975919, 0.21091826, 0.01707898,
-        #              0.0797731 , 0.31435676, 2.10866315, 2.27023049])
-        # chi2 = 57.3 w/o comp (got 56.1 w comp)
-        #p = np.array([ 6.00416473e+00,  9.24874836e+00,  2.40617958e+00,  4.43622591e-01,
-        #               -4.62934559e-03,  1.61620694e-01,  3.97548021e-01,  1.30654841e+00, 1.53921807e+00])
-        p = np.array([ 3.27801935,  1.76861628,  0.58899468,  0.23005875,  0.02647415,
-                       0.13972084,  0.15246853,  0.07331921,  0.23032649,  0.0695029 ,
-                       12.5166127 ,  1.48445195, -0.54531285])
-        # chi2 = 62.1 w/ comp (got 57.6 w/o comp)
-        #p = np.array([12.33722686,  5.68785709,  1.07629835,  0.57828183,  0.02332784,
-        #              0.21744102,  0.06446547,  0.14741691,  0.19644855])
-        # n_e
-        #p = np.array([ 1.85410576e+03,  1.52184816e+00,  3.36641396e+00,  2.78641403e-01,
-        #               -3.01246172e-02,  4.90239365e-02, -8.66447087e-01,  1.35785610e-01, -9.22377242e-03])
-        #p = np.array([ 1.31630205e+03,  1.38077037e+00,  2.35763762e+00,  5.57495651e-01,
-        #               -7.64588711e-02,  2.35171189e-01,  1.35922570e-01,  8.46757801e-02, 3.28053481e-02])
-    else:
-        # read in bestfit (names of parameters from fit_params)
-        lnprob = np.loadtxt(lnprob_outfile)
-        marg = np.loadtxt(marg_outfile)
-        index_max = np.argmax(lnprob)
-        p = marg[index_max]
-        print("max", lnprob[index_max])
-
-    
     # parameters to fit
     nparams = len(fit_params.keys())
     param_mapping = {}
     param_profile = {}
+    params = np.zeros((nparams, 4))
     for key in fit_params.keys():
         mapping_idx = fit_params[key][0]
         profile_type = fit_params[key][-1]
         param_mapping[key] = mapping_idx
         param_profile[key] = profile_type
+        params[mapping_idx, :] = fit_params[key][1:-1]
+
+    if load_fixed_mini:
+        # where to record
+        mini_outfile = os.path.join(dir_chains, f"{ch_config_params['chainsPrefix']}_bestfit.npz")
+        data = np.load(mini_outfile)
+        p = data['p']
+        chi2 = data['chi2']
+        print("fixed: p_bf, chi2 from txt", p, chi2)
+    else:
+        # walkers ratio, number of params and burn in iterations
+        marg_outfile = os.path.join(dir_chains, (ch_config_params['chainsPrefix']+".txt"))
+        lnprob_outfile = os.path.join(dir_chains, (ch_config_params['chainsPrefix']+"prob.txt"))
+        
+        # read in bestfit (names of parameters from fit_params)
+        lnprob = np.loadtxt(lnprob_outfile)
+        marg = np.loadtxt(marg_outfile)
+        index_max = np.argmax(lnprob)
+        p = marg[index_max]
+        print("fixed: min chi2 from txt", -2.*lnprob[index_max])
 
     param_dict = {}
     for key in param_mapping.keys():
@@ -161,8 +152,105 @@ def main(path2config, time_likelihood):
             param_dict[profile_type] = {}
             param_dict[profile_type][key] = p[mapping_idx]
 
+    # pass them to the dictionary
+    for prof_type in Da.profs_type:
+        lcls = locals()
+        exec(f"fn = Th.get_{prof_type}", globals(), lcls)
+        fn = lcls["fn"]
+        prof_th = fn(Da.redshift_snap, param_dict[prof_type])
+
+    return Th.fixed_profs
+
+
+def main(path2config, time_likelihood, minimize, fixed_profile, path2config_fixed, load_fixed_mini):
+
+    # load the yaml parameters
+    config = yaml.load(open(path2config))
+    cosmo_params = config['cosmo_params']
+    common_params = config['common_params']
+    data_params = config['data_params']
+    ch_config_params = config['ch_config_params']
+    fit_params = config['fit_params']
+    other_params = config['other_params']
+
+    # TESTING!!!!!!!!!!!!!!!!!!!
+    r_min = 0.03
+    r_max = 100.
+    data_params['r_min'] = r_min
+    data_params['r_max'] = r_max
+    
+    # chain name
+    dir_chains = ch_config_params['path2output']
+    chainsPrefix = ch_config_params['chainsPrefix']
+    
+    # snapshots
+    snapshots = data_params['snapshots']
+
+    # here we are just going to decide on which profiles to load
+    #data_params['profs_type'] = ['n_e', 'P_e'] # TESTING!!!!!!!!!!!! # if you comment out, just default
+    profs_type_plot = data_params['profs_type']
+    
+    # read data parameters
+    Da = Data(data_params, cosmo_params, return_integral_quantities=True)
+    
+    # create a new abacushod object and load the subsamples
+    Th = Theory(cosmo_params, common_params, Da.xbinc, Da.mbins, Da.sbins)
+
+    if minimize:
+        # where to record
+        mini_outfile = os.path.join(dir_chains, f"{ch_config_params['chainsPrefix']}_bestfit.npz")
+        data = np.load(mini_outfile)
+        p = data['p']
+        chi2 = data['chi2']
+        print("p, chi2 from txt", p, chi2)
+    else:
+        # walkers ratio, number of params and burn in iterations
+        marg_outfile = os.path.join(dir_chains, (ch_config_params['chainsPrefix']+".txt"))
+        lnprob_outfile = os.path.join(dir_chains, (ch_config_params['chainsPrefix']+"prob.txt"))
+        
+        # read in bestfit (names of parameters from fit_params)
+        lnprob = np.loadtxt(lnprob_outfile)
+        marg = np.loadtxt(marg_outfile)
+        index_max = np.argmax(lnprob)
+        p = marg[index_max]
+        print("min chi2 from txt", -2.*lnprob[index_max])
+    
+    # parameters to fit
+    nparams = len(fit_params.keys())
+    param_mapping = {}
+    param_profile = {}
+    for key in fit_params.keys():
+        mapping_idx = fit_params[key][0]
+        profile_type = fit_params[key][-1]
+        param_mapping[key] = mapping_idx
+        param_profile[key] = profile_type
+
+
+    # tuks for loading
+    if fixed_profile:
+        assert path2config_fixed is not None
+        # create the 1- and 2-halo
+        r_min = data_params.get('r_min', 0.0)
+        r_max = data_params.get('r_max', 100.)
+        secondary_type = data_params.get('secondary_type', 'conc')
+        nbin_sec = data_params['nbin_sec']
+        fixed_profs = load_1p2h(path2config_fixed, r_min, r_max, nbin_sec, secondary_type, load_fixed_mini) 
+    else:
+        fixed_profs = None
+    #print("SHOULDNT BE NONE", fixed_profs)
+    
+    param_dict = {}
+    for key in param_mapping.keys():
+        mapping_idx = param_mapping[key]
+        profile_type = param_profile[key]
+        try:
+            param_dict[profile_type][key] = p[mapping_idx]
+        except:
+            param_dict[profile_type] = {}
+            param_dict[profile_type][key] = p[mapping_idx]
+
     # print bestfit parameters
-    print("bf params", param_dict)
+    #print("bf params", param_dict)
     
     # load in other parameters needed for other profiles
     for prof_type_plot in profs_type_plot:
@@ -173,24 +261,33 @@ def main(path2config, time_likelihood):
     profs_th = {}
     for prof_type in profs_type_plot:
         lcls = locals()
-        exec(f"fn = Th.get_{prof_type}", globals(), lcls)
-        fn = lcls["fn"]
-        prof_th = fn(Da.redshift_snap, param_dict[prof_type])
+        if fixed_profs is not None:
+            exec(f"fn = Th.get_{prof_type}_fixed", globals(), lcls)
+            fn = lcls["fn"]
+            prof_th = fn(Da.redshift_snap, param_dict[prof_type], fixed_profs)
+        else:
+            exec(f"fn = Th.get_{prof_type}", globals(), lcls)
+            fn = lcls["fn"]
+            prof_th = fn(Da.redshift_snap, param_dict[prof_type])
         profs_th[prof_type] = prof_th
     sz_dict = Da.sz_dict
+
+    # colors
+    hexcolors_bright = ['#CC3311','#0077BB','#EE7733','limegreen','#BBBBBB','#33BBEE','#EE3377','#0099BB']
+    cs = hexcolors_bright
     
+    # this only plots the yaml file stuff
     plot_bf = True
     if plot_bf:
         # pass them to the mock dictionary
         for prof_type in Da.profs_type:
-            print("prof type", prof_type)
+
             chi2_sum = 0.
             dof_sum = 0
             # loop over each snapshot
             for i in range(len(snapshots)):
                 # which snapshot
                 snap = snapshots[i]
-                print("snapshot", snap)
                 
                 # initiate figure
                 if len(Da.mbins)-1 > 5:
@@ -209,7 +306,6 @@ def main(path2config, time_likelihood):
                 # loop over each mass bin (or maybe just 5?)
                 count = 0
                 for j in inds_mbins:
-                    print(f"{np.log10(Da.mbins[j]):.2f} < log(M_h) < {np.log10(Da.mbins[j+1]):.2f}")
                     
                     # loop over secondary property
                     for k in inds_sbins:
@@ -221,11 +317,10 @@ def main(path2config, time_likelihood):
                         prof_data = Da.profs_data[prof_type][snap][(j*len(inds_sbins)+k)*len(Da.xbinc): (j*len(inds_sbins)+k+1)*len(Da.xbinc)]
                         prof_data_err = Da.profs_icov[prof_type][snap][(j*len(inds_sbins)+k)*len(Da.xbinc): (j*len(inds_sbins)+k+1)*len(Da.xbinc), (j*len(inds_sbins)+k)*len(Da.xbinc): (j*len(inds_sbins)+k+1)*len(Da.xbinc)]
                         delta = (prof_theo-prof_data)
-                        print("prof_theo", prof_theo)
                         chi2 = np.einsum('i,ij,j', delta, prof_data_err, delta)
                         chi2_sum += chi2
                         dof_sum += len(delta)
-                        print("chi2, dof", chi2, len(delta))
+                        print("chi2, dof", chi2, len(delta), f"{np.log10(Da.mbins[j]):.2f} < log(M_h) < {np.log10(Da.mbins[j+1]):.2f}, snap, prof type", snap, prof_type)
                         try:
                             prof_data_err = np.sqrt(np.diag(np.linalg.inv(prof_data_err)))
                             yerr = prof_data_err*Da.xbinc**2
@@ -233,13 +328,14 @@ def main(path2config, time_likelihood):
                             print("singular matrix")
                             yerr = None
 
-                        plt.subplot(n_row, len(inds_mbins)//n_row, count+1) # 
+                        plt.subplot(n_row, len(inds_mbins)//n_row, count+1)
 
                         plt.title(rf"${np.log10(Da.mbins[j]):.2f} < \log (M_h) < {np.log10(Da.mbins[j+1]):.2f}$")
-                        plt.errorbar(Da.xbinc, prof_data*Da.xbinc**2, yerr=yerr, c='r')
-                        plt.plot(Da.xbinc, prof_theo*Da.xbinc**2, c='r', ls='--')
+                        plt.errorbar(Da.xbinc, prof_data*Da.xbinc**2, yerr=yerr, c=cs[k])
+                        plt.plot(Da.xbinc, prof_theo*Da.xbinc**2, c=cs[k], ls='--')
 
                         plt.xscale('log')
+                        plt.yscale('log')
                     count += 1
                 
                 plt.savefig(f"figs/prof_{prof_type}_{chainsPrefix}_snap{snap:d}.png")
@@ -322,7 +418,6 @@ def main(path2config, time_likelihood):
                 plt.savefig(f"figs/sz_int_{sz_type}_{chainsPrefix}_snap{snap:d}.png")
 
     plot_extra = True
-    cs = ['r', 'b']
     if plot_extra:
         # loop over each snapshot
         for i in range(len(snapshots)):
@@ -390,6 +485,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=ArgParseFormatter)
     parser.add_argument('--path2config', dest='path2config', type=str, help='Path to config file.', default=DEFAULTS['path2config'])
     parser.add_argument('--time_likelihood', dest='time_likelihood',  help='Times the likelihood calculations', action='store_true')
+    parser.add_argument('--minimize', dest='minimize',  help='Run a minimizer instead of full emcee chain', action='store_true')
+    parser.add_argument('--fixed_profile', dest='fixed_profile',  help='Fix the 1-halo term and vary other parameters', action='store_true')
+    parser.add_argument('--path2config_fixed', dest='path2config_fixed', type=str, help='Path to config file with fixed params.', default=DEFAULTS['path2config_fixed'])
+    parser.add_argument('--load_fixed_mini', dest='load_fixed_mini',  help='Load fixed parameters from minimizer (otherwise, from chain)', action='store_true')
 
     args = vars(parser.parse_args())
     main(**args)

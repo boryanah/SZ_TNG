@@ -10,6 +10,19 @@ from getdist import MCSamples, plots
 DEFAULTS = {}
 DEFAULTS['path2config'] = 'config/fit_profile.yaml'
 
+"""
+python plot_chains.py --path2config config/mtng_fit_vanilla_density.yaml
+python plot_chains.py --path2config config/mtng_fit_conc_density.yaml
+python plot_chains.py --path2config config/mtng_fit_conc_power_density.yaml
+python plot_chains.py --path2config config/mtng_fit_power_density.yaml
+
+python plot_chains.py --path2config config/mtng_fit_vanilla_pressure.yaml
+python plot_chains.py --path2config config/mtng_fit_conc_pressure.yaml
+python plot_chains.py --path2config config/mtng_fit_conc_power_pressure.yaml
+python plot_chains.py --path2config config/mtng_fit_power_pressure.yaml
+
+"""
+
 def get_samples(outfile, par_names, w_rat, n_par, b_iter):
     marg_chains = np.loadtxt(outfile)
     # uncomment for when your chains have been complete

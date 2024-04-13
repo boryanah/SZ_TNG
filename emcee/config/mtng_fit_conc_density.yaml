@@ -19,7 +19,7 @@ common_params:
     delta__for__electron__density: 200c
     mass__function: T08M200c
     concentration__parameter: B13
-    z_min: 0.005
+    z_min: 0.0
     z_max: 3.0
     M_min: 1.0e10
     M_max: 3.5e15
@@ -146,4 +146,4 @@ ch_config_params:
     rerun: 0
     walkersRatio: 4
     burninIterations: 2000
-    sampleIterations: 40000
+    sampleIterations: 120000

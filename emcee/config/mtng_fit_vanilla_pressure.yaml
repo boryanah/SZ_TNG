@@ -19,7 +19,7 @@ common_params:
     delta__for__electron__density: 200c
     mass__function: T08M200c
     concentration__parameter: B13
-    z_min: 0.005
+    z_min: 0.0 #05
     z_max: 3.0
     M_min: 1.0e10
     M_max: 3.5e15
@@ -47,7 +47,8 @@ data_params:
     field_dir: /global/cscratch1/sd/boryanah/SZ_TNG/
     snaps_fn: /global/cscratch1/sd/boryanah/SZ_TNG/snaps_illustris_mtng.txt
     sim_name: MTNG
-    fn_base: prof_sph_r200c_m200c_1e12Msun
+#    fn_base: prof_sph_r200c_m200c_1e12Msun # TESTING!!!!!!!!!!!!
+    fn_base: prof_sph_r200c_m200c_1e12Msun_50r200c
     sz_base: SZ_sph_cyl_r200c_m200c_1e12Msun
 #    dm_base: prof_dm_dm_sph_r200c_m200c_1e12Msun
     dm_base: prof_dm_fp_sph_r200c_m200c_1e12Msun
