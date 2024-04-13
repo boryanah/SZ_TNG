@@ -6,7 +6,6 @@ from dark_emulator import darkemu
 #import plotparams
 #plotparams.buba()
 
-
 z = 0
 
 emu = darkemu.base_class()
